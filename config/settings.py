@@ -14,7 +14,7 @@ SECRET_KEY = 'django-insecure-mvp-key-change-in-production'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost', '172.18.0.107','10.25.10.216']
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
