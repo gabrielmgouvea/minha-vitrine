@@ -1,0 +1,185 @@
+{% extends 'base.html' %}
+
+{% block title %}Busca - Minha Vitrine{% endblock %}
+
+{% block content %}
+<div class="busca-page">
+    <div class="container">
+        <div class="busca-header">
+            <h1>Resultados da Busca</h1>
+            {% if query %}
+                <p>Buscando por: <strong>"{{ query }}"</strong></p>
+            {% endif %}
+        </div>
+        
+        <!-- Search Bar -->
+        <form action="{% url 'buscar' %}" method="get" class="search-bar-page">
+            <div class="search-input-wrapper">
+                <i class="fas fa-search"></i>
+                <input type="text" name="q" value="{{ query }}" placeholder="Buscar estabelecimentos..." class="search-input">
+            </div>
+            <button type="submit" class="search-btn">
+                <i class="fas fa-search"></i>
+                Buscar
+            </button>
+        </form>
+        
+        {% if estabelecimentos %}
+            <p class="resultados-count">{{ estabelecimentos.count }} resultado{{ estabelecimentos.count|pluralize }} encontrado{{ estabelecimentos.count|pluralize }}</p>
+            
+            <div class="establishments-grid">
+                {% for estabelecimento in estabelecimentos %}
+                    <div class="establishment-card">
+                        <div class="card-image-wrapper">
+                            {% if estabelecimento.imagem_principal %}
+                                <img src="{{ estabelecimento.imagem_principal.url }}" alt="{{ estabelecimento.nome }}" class="card-image">
+                            {% else %}
+                                <div class="card-image-placeholder">
+                                    <i class="fas fa-store"></i>
+                                </div>
+                            {% endif %}
+                            
+                            <button class="favorite-btn {% if user.is_authenticated and user in estabelecimento.favoritos.all %}favorited{% endif %}" 
+                                    data-id="{{ estabelecimento.id }}"
+                                    onclick="toggleFavorite({{ estabelecimento.id }})">
+                                <i class="fas fa-star"></i>
+                                {% if user.is_authenticated and user in estabelecimento.favoritos.all %}
+                                    <span>Favoritos</span>
+                                {% else %}
+                                    <span>Favoritar</span>
+                                {% endif %}
+                            </button>
+                        </div>
+                        
+                        <div class="card-content">
+                            <span class="card-category">{{ estabelecimento.categoria.nome }}</span>
+                            <h3 class="card-title">{{ estabelecimento.nome }}</h3>
+                            <p class="card-description">{{ estabelecimento.descricao|truncatewords:20 }}</p>
+                            
+                            {% if estabelecimento.media_avaliacoes %}
+                                <div class="card-rating">
+                                    {% for i in "12345" %}
+                                        {% if forloop.counter <= estabelecimento.media_avaliacoes %}
+                                            <i class="fas fa-star"></i>
+                                        {% else %}
+                                            <i class="far fa-star"></i>
+                                        {% endif %}
+                                    {% endfor %}
+                                    <span>({{ estabelecimento.total_avaliacoes }})</span>
+                                </div>
+                            {% endif %}
+                            
+                            <div class="card-actions">
+                                <a href="{% url 'estabelecimento_detalhe' estabelecimento.id %}" class="btn-view-details">
+                                    Ver Detalhes <i class="fas fa-arrow-right"></i>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="no-results">
+                <i class="fas fa-search"></i>
+                <h3>Nenhum resultado encontrado</h3>
+                <p>Tente buscar com outras palavras-chave</p>
+                <a href="{% url 'home' %}" class="btn-primary">Voltar ao Início</a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.busca-page {
+    padding: 3rem 0;
+}
+
+.busca-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.busca-header h1 {
+    font-size: 2.5rem;
+    color: var(--text-primary);
+    margin-bottom: 0.5rem;
+}
+
+.busca-header p {
+    font-size: 1.1rem;
+    color: var(--text-secondary);
+}
+
+.search-bar-page {
+    max-width: 600px;
+    margin: 0 auto 2rem;
+    display: flex;
+    gap: 1rem;
+}
+
+.resultados-count {
+    color: var(--text-secondary);
+    margin-bottom: 1.5rem;
+    font-size: 0.95rem;
+}
+
+.card-category {
+    display: inline-block;
+    color: var(--primary);
+    font-weight: 600;
+    font-size: 0.85rem;
+    margin-bottom: 0.5rem;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function toggleFavorite(estabelecimentoId) {
+    {% if not user.is_authenticated %}
+        window.location.href = "{% url 'login' %}?next=" + window.location.pathname;
+        return;
+    {% endif %}
+    
+    fetch(`/estabelecimento/${estabelecimentoId}/favoritar/`, {
+        method: 'POST',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const btn = document.querySelector(`button[data-id="${estabelecimentoId}"]`);
+            if (data.is_favorito) {
+                btn.classList.add('favorited');
+                btn.querySelector('span').textContent = 'Favoritos';
+            } else {
+                btn.classList.remove('favorited');
+                btn.querySelector('span').textContent = 'Favoritar';
+            }
+        }
+    })
+    .catch(error => console.error('Erro:', error));
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}
+

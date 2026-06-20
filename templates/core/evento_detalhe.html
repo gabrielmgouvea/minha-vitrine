@@ -1,0 +1,250 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ evento.nome }} - Minha Vitrine{% endblock %}
+
+{% block content %}
+<div class="evento-detalhes-page">
+    <div class="container">
+        <div class="evento-detalhes-card">
+            {% if evento.banner %}
+                <div class="evento-banner-large">
+                    <img src="{{ evento.banner.url }}" alt="{{ evento.nome }}">
+                </div>
+            {% endif %}
+            
+            <div class="evento-detalhes-content">
+                <span class="evento-tipo-badge">{{ evento.get_tipo_display }}</span>
+                <h1>{{ evento.nome }}</h1>
+                
+                <div class="evento-meta">
+                    <div class="meta-item">
+                        <i class="fas fa-calendar-alt"></i>
+                        <div>
+                            <strong>Data</strong>
+                            <p>{{ evento.data_inicio|date:"d/m/Y" }}{% if evento.data_fim %} até {{ evento.data_fim|date:"d/m/Y" }}{% endif %}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="meta-item">
+                        <i class="fas fa-clock"></i>
+                        <div>
+                            <strong>Horário</strong>
+                            <p>{{ evento.hora_inicio|time:"H:i" }}{% if evento.hora_fim %} às {{ evento.hora_fim|time:"H:i" }}{% endif %}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="meta-item">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <div>
+                            <strong>Local</strong>
+                            <p>{{ evento.localizacao }}</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="evento-descricao-section">
+                    <h2>Sobre o Evento</h2>
+                    <p>{{ evento.descricao }}</p>
+                </div>
+                
+                <div class="evento-actions">
+                    <div class="share-wrap" id="shareWrap">
+                        <button type="button" class="btn-compartilhar" id="btnCompartilhar" aria-expanded="false" aria-haspopup="true">
+                            <i class="fas fa-share-alt"></i> Compartilhar
+                        </button>
+                        <div class="share-popover" id="sharePopover" role="menu">
+                            <button type="button" class="btn-copiar-link" id="btnCopiarUrl" data-url="{{ request.scheme }}://{{ request.get_host }}{{ request.get_full_path }}">
+                                <i class="fas fa-link"></i> Copiar link
+                            </button>
+                        </div>
+                    </div>
+                    <a href="{% url 'eventos' %}" class="btn-voltar">
+                        <i class="fas fa-arrow-left"></i> Voltar para Eventos
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.evento-detalhes-page {
+    padding: 2rem 0 4rem;
+}
+
+.evento-detalhes-card {
+    background: white;
+    border-radius: 24px;
+    overflow: hidden;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+}
+
+.evento-banner-large {
+    width: 100%;
+    height: 400px;
+    overflow: hidden;
+}
+
+.evento-banner-large img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.evento-detalhes-content {
+    padding: 3rem;
+}
+
+.evento-tipo-badge {
+    display: inline-block;
+    padding: 0.5rem 1.25rem;
+    background: #6C5CE7;
+    color: white;
+    border-radius: 50px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+}
+
+.evento-detalhes-content h1 {
+    font-size: 2.5rem;
+    color: #1a1a1a;
+    margin-bottom: 2rem;
+}
+
+.evento-meta {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 3rem;
+}
+
+.meta-item {
+    display: flex;
+    gap: 1rem;
+    padding: 1.5rem;
+    background: #f8f9fa;
+    border-radius: 12px;
+}
+
+.meta-item i {
+    font-size: 1.5rem;
+    color: #6C5CE7;
+}
+
+.meta-item strong {
+    display: block;
+    font-size: 0.9rem;
+    color: #1a1a1a;
+    margin-bottom: 0.25rem;
+}
+
+.meta-item p {
+    color: #666;
+    font-size: 0.95rem;
+}
+
+.evento-descricao-section {
+    margin-bottom: 3rem;
+}
+
+.evento-descricao-section h2 {
+    font-size: 1.75rem;
+    color: #1a1a1a;
+    margin-bottom: 1rem;
+}
+
+.evento-descricao-section p {
+    color: #666;
+    line-height: 1.8;
+    font-size: 1.05rem;
+}
+
+.evento-actions {
+    display: flex;
+    gap: 1rem;
+}
+
+.btn-compartilhar,
+.btn-voltar {
+    padding: 1rem 2rem;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.btn-compartilhar {
+    background: #6C5CE7;
+    color: white;
+    border: none;
+}
+
+.btn-compartilhar:hover {
+    background: #5a4fd4;
+    transform: translateY(-2px);
+}
+
+.btn-voltar {
+    background: white;
+    color: #1a1a1a;
+    border: 2px solid #e0e0e0;
+}
+
+.btn-voltar:hover {
+    border-color: #6C5CE7;
+    color: #6C5CE7;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var wrap = document.getElementById('shareWrap');
+    var btn = document.getElementById('btnCompartilhar');
+    var copiar = document.getElementById('btnCopiarUrl');
+    if (!wrap || !btn || !copiar) return;
+    btn.addEventListener('click', function(e) {
+        e.stopPropagation();
+        wrap.classList.toggle('is-open');
+        btn.setAttribute('aria-expanded', wrap.classList.contains('is-open'));
+    });
+    document.addEventListener('click', function() {
+        wrap.classList.remove('is-open');
+        btn.setAttribute('aria-expanded', 'false');
+    });
+    copiar.addEventListener('click', function(e) {
+        e.stopPropagation();
+        var url = copiar.getAttribute('data-url') || window.location.href;
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(url).then(function() {
+                copiar.innerHTML = '<i class="fas fa-check"></i> Copiado!';
+                setTimeout(function() {
+                    copiar.innerHTML = '<i class="fas fa-link"></i> Copiar link';
+                }, 2000);
+            });
+        } else {
+            var ta = document.createElement('textarea');
+            ta.value = url;
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+            copiar.innerHTML = '<i class="fas fa-check"></i> Copiado!';
+            setTimeout(function() {
+                copiar.innerHTML = '<i class="fas fa-link"></i> Copiar link';
+            }, 2000);
+        }
+        wrap.classList.remove('is-open');
+    });
+});
+</script>
+{% endblock %}
+

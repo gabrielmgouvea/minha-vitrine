@@ -1,0 +1,660 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ estabelecimento.nome }} - Minha Vitrine{% endblock %}
+
+{% block content %}
+<div class="detalhes-page">
+    <div class="container">
+        <div class="detalhes-grid">
+            <!-- Imagens -->
+            <div class="detalhes-images">
+                <div class="main-image">
+                    {% if estabelecimento.imagem_principal %}
+                        <img src="{{ estabelecimento.imagem_principal.url }}" alt="{{ estabelecimento.nome }}" id="mainImage">
+                    {% else %}
+                        <div class="image-placeholder">
+                            <i class="fas fa-store"></i>
+                        </div>
+                    {% endif %}
+                </div>
+                
+                {% if estabelecimento.fotos.all %}
+                    <div class="thumbnail-images">
+                        {% for foto in estabelecimento.fotos.all %}
+                            <img src="{{ foto.imagem.url }}" alt="{{ foto.legenda }}" 
+                                 class="thumbnail" onclick="changeMainImage('{{ foto.imagem.url }}')">
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </div>
+            
+            <!-- Informações -->
+            <div class="detalhes-info">
+                <div class="info-header">
+                    <div>
+                        <span class="categoria-badge">{{ estabelecimento.categoria.nome }}</span>
+                        <h1>{{ estabelecimento.nome }}</h1>
+                    </div>
+                    
+                    <button class="favorite-btn-large {% if is_favorito %}favorited{% endif %}" 
+                            onclick="toggleFavorite({{ estabelecimento.id }})">
+                        <i class="fas fa-star"></i>
+                    </button>
+                </div>
+                
+                {% if avaliacoes %}
+                    <div class="rating-overview">
+                        <div class="rating-number">{{ media_avaliacoes }}</div>
+                        <div class="rating-stars">
+                            {% for i in "12345" %}
+                                {% if forloop.counter <= media_avaliacoes %}
+                                    <i class="fas fa-star"></i>
+                                {% else %}
+                                    <i class="far fa-star"></i>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                        <span class="rating-count">({{ avaliacoes.count }} avaliações)</span>
+                    </div>
+                {% endif %}
+                
+                <div class="info-section">
+                    <h3><i class="fas fa-info-circle"></i> Descrição</h3>
+                    <p>{{ estabelecimento.descricao }}</p>
+                </div>
+                
+                <div class="info-section">
+                    <h3><i class="fas fa-map-marker-alt"></i> Endereço</h3>
+                    <p>{{ estabelecimento.endereco }}{% if estabelecimento.numero %}, {{ estabelecimento.numero }}{% endif %}</p>
+                    {% if estabelecimento.complemento %}
+                        <p>{{ estabelecimento.complemento }}</p>
+                    {% endif %}
+                    {% if estabelecimento.cep %}
+                        <p>CEP: {{ estabelecimento.cep }}</p>
+                    {% endif %}
+                    
+                    <a href="{{ estabelecimento.get_google_maps_url }}" target="_blank" class="btn-google-maps">
+                        <i class="fas fa-map-marked-alt"></i>
+                        Ver no Google Maps
+                    </a>
+                </div>
+                
+                {% if estabelecimento.horario_funcionamento %}
+                    <div class="info-section">
+                        <h3><i class="far fa-clock"></i> Horário de Funcionamento</h3>
+                        <p style="white-space: pre-line;">{{ estabelecimento.horario_funcionamento }}</p>
+                    </div>
+                {% endif %}
+                
+                <div class="info-section">
+                    <h3><i class="fas fa-address-book"></i> Contato</h3>
+                    <div class="contact-info">
+                        {% if estabelecimento.telefone %}
+                            <div class="contact-item">
+                                <i class="fas fa-phone"></i>
+                                <a href="tel:{{ estabelecimento.telefone }}">{{ estabelecimento.telefone }}</a>
+                            </div>
+                        {% endif %}
+                        
+                        {% if estabelecimento.whatsapp %}
+                            <div class="contact-item">
+                                <i class="fab fa-whatsapp"></i>
+                                <a href="https://wa.me/{{ estabelecimento.whatsapp }}" target="_blank">{{ estabelecimento.whatsapp }}</a>
+                            </div>
+                        {% endif %}
+                        
+                        {% if estabelecimento.email %}
+                            <div class="contact-item">
+                                <i class="fas fa-envelope"></i>
+                                <a href="mailto:{{ estabelecimento.email }}">{{ estabelecimento.email }}</a>
+                            </div>
+                        {% endif %}
+                        
+                        {% if estabelecimento.website %}
+                            <div class="contact-item">
+                                <i class="fas fa-globe"></i>
+                                <a href="{{ estabelecimento.website }}" target="_blank">{{ estabelecimento.website }}</a>
+                            </div>
+                        {% endif %}
+                        
+                        {% if estabelecimento.instagram %}
+                            <div class="contact-item">
+                                <i class="fab fa-instagram"></i>
+                                <a href="https://instagram.com/{{ estabelecimento.instagram }}" target="_blank">@{{ estabelecimento.instagram }}</a>
+                            </div>
+                        {% endif %}
+                        
+                        {% if estabelecimento.facebook %}
+                            <div class="contact-item">
+                                <i class="fab fa-facebook"></i>
+                                <a href="{{ estabelecimento.facebook }}" target="_blank">Facebook</a>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Avaliações -->
+        <div class="avaliacoes-container">
+            <h2>Avaliações</h2>
+            
+            {% if user.is_authenticated and not usuario_ja_avaliou and avaliacao_form %}
+                <div class="nova-avaliacao">
+                    <h3>Deixe sua avaliação</h3>
+                    <form method="post" action="{% url 'avaliar_estabelecimento' estabelecimento.id %}" class="avaliacao-form">
+                        {% csrf_token %}
+                        
+                        <div class="star-rating-input">
+                            <label>Sua nota:</label>
+                            <div class="stars-input">
+                                {% for i in "12345" %}
+                                    <input type="radio" name="estrelas" id="star{{ i }}" value="{{ i }}" required>
+                                    <label for="star{{ i }}"><i class="fas fa-star"></i></label>
+                                {% endfor %}
+                            </div>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="id_comentario">Seu comentário:</label>
+                            {{ avaliacao_form.comentario }}
+                        </div>
+                        
+                        <button type="submit" class="btn-submit-avaliacao">Enviar Avaliação</button>
+                    </form>
+                </div>
+            {% endif %}
+            
+            <div class="avaliacoes-list">
+                {% if avaliacoes %}
+                    {% for avaliacao in avaliacoes %}
+                        <div class="avaliacao-item">
+                            <div class="avaliacao-header">
+                                <div class="avaliacao-user">
+                                    <div class="user-avatar">
+                                        {% if avaliacao.usuario.profile.avatar %}
+                                            <img src="{{ avaliacao.usuario.profile.avatar.url }}" alt="{{ avaliacao.usuario.first_name }}">
+                                        {% else %}
+                                            <i class="fas fa-user-circle"></i>
+                                        {% endif %}
+                                    </div>
+                                    <div>
+                                        <strong>{{ avaliacao.usuario.first_name|default:avaliacao.usuario.username }}</strong>
+                                        <div class="avaliacao-stars">
+                                            {% for i in "12345" %}
+                                                {% if forloop.counter <= avaliacao.estrelas %}
+                                                    <i class="fas fa-star"></i>
+                                                {% else %}
+                                                    <i class="far fa-star"></i>
+                                                {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                                <span class="avaliacao-data">{{ avaliacao.criado_em|date:"d/m/Y" }}</span>
+                            </div>
+                            {% if avaliacao.comentario %}
+                                <p class="avaliacao-comentario">{{ avaliacao.comentario }}</p>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                {% else %}
+                    <p class="no-avaliacoes">Nenhuma avaliação ainda. Seja o primeiro a avaliar!</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.detalhes-page {
+    padding: 2rem 0 4rem;
+}
+
+.detalhes-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3rem;
+    margin-bottom: 3rem;
+}
+
+.detalhes-images .main-image {
+    width: 100% !important;
+    height: 600px !important;
+    min-height: 600px !important;
+    max-height: 700px !important;
+    border-radius: 16px;
+    overflow: visible !important;
+    margin-bottom: 1rem;
+    position: relative;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background: #f5f5f5;
+    padding: 1rem !important;
+}
+
+.detalhes-images .main-image img,
+.detalhes-images .main-image #mainImage {
+    max-width: 100% !important;
+    max-height: 100% !important;
+    width: auto !important;
+    height: auto !important;
+    object-fit: contain !important;
+    object-position: center center !important;
+    display: block !important;
+}
+
+.image-placeholder {
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #FF6B6B 0%, #FFA726 50%, #FFD93D 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 5rem;
+    color: white;
+}
+
+.thumbnail-images {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.5rem;
+}
+
+.thumbnail {
+    width: 100%;
+    height: 120px;
+    object-fit: cover;
+    object-position: center;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    border: 3px solid transparent;
+}
+
+.thumbnail:hover {
+    border-color: #FF6B6B;
+    transform: scale(1.05);
+}
+
+.info-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1.5rem;
+}
+
+.categoria-badge {
+    display: inline-block;
+    padding: 0.375rem 1rem;
+    background: linear-gradient(135deg, #FF6B6B 0%, #FFA726 100%);
+    color: white;
+    border-radius: 50px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+}
+
+.detalhes-info h1 {
+    font-size: 2.5rem;
+    color: #1a1a1a;
+    margin: 0;
+}
+
+.favorite-btn-large {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    border: 3px solid #e0e0e0;
+    background: white;
+    color: #FFD700;
+    font-size: 1.5rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.favorite-btn-large:hover,
+.favorite-btn-large.favorited {
+    background: #FFD700;
+    color: white;
+    border-color: #FFD700;
+}
+
+.rating-overview {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.5rem;
+    background: #f8f9fa;
+    border-radius: 12px;
+    margin-bottom: 2rem;
+}
+
+.rating-number {
+    font-size: 3rem;
+    font-weight: 700;
+    color: #1a1a1a;
+}
+
+.rating-stars {
+    display: flex;
+    gap: 0.25rem;
+    font-size: 1.5rem;
+}
+
+.rating-stars i {
+    color: #FFD700;
+}
+
+.rating-count {
+    color: #666;
+    font-size: 0.95rem;
+}
+
+.info-section {
+    margin-bottom: 2rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid #e0e0e0;
+}
+
+.info-section:last-child {
+    border-bottom: none;
+}
+
+.info-section h3 {
+    font-size: 1.25rem;
+    color: #1a1a1a;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.info-section h3 i {
+    color: #FF6B6B;
+}
+
+.info-section p {
+    color: #666;
+    line-height: 1.7;
+}
+
+.contact-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.contact-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.contact-item i {
+    width: 24px;
+    font-size: 1.1rem;
+    color: #FF6B6B;
+}
+
+.contact-item a {
+    color: #1a1a1a;
+    transition: color 0.3s ease;
+}
+
+.contact-item a:hover {
+    color: #FF6B6B;
+}
+
+.btn-google-maps {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.875rem 1.5rem;
+    background: #4285F4;
+    color: white;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    margin-top: 1rem;
+}
+
+.btn-google-maps:hover {
+    background: #3367D6;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(66, 133, 244, 0.3);
+    color: white;
+}
+
+.btn-google-maps i {
+    font-size: 1.1rem;
+}
+
+.avaliacoes-container {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.avaliacoes-container h2 {
+    font-size: 2rem;
+    margin-bottom: 2rem;
+    color: #1a1a1a;
+}
+
+.nova-avaliacao {
+    background: #f8f9fa;
+    padding: 2rem;
+    border-radius: 16px;
+    margin-bottom: 3rem;
+}
+
+.nova-avaliacao h3 {
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
+    color: #1a1a1a;
+}
+
+.star-rating-input {
+    margin-bottom: 1.5rem;
+}
+
+.stars-input {
+    display: flex;
+    gap: 0.5rem;
+    flex-direction: row-reverse;
+    justify-content: flex-end;
+    margin-top: 0.5rem;
+}
+
+.stars-input input[type="radio"] {
+    display: none;
+}
+
+.stars-input label {
+    font-size: 2rem;
+    color: #e0e0e0;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.stars-input input[type="radio"]:checked ~ label,
+.stars-input label:hover,
+.stars-input label:hover ~ label {
+    color: #FFD700;
+}
+
+.avaliacao-form textarea {
+    width: 100%;
+    padding: 1rem;
+    border: 2px solid #e0e0e0;
+    border-radius: 12px;
+    font-size: 1rem;
+    font-family: inherit;
+    resize: vertical;
+}
+
+.avaliacao-form textarea:focus {
+    outline: none;
+    border-color: #FF6B6B;
+    box-shadow: 0 0 0 3px rgba(255, 107, 107, 0.1);
+}
+
+.btn-submit-avaliacao {
+    padding: 0.875rem 2rem;
+    background: linear-gradient(135deg, #FF6B6B 0%, #FFA726 100%);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    margin-top: 1rem;
+    box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
+}
+
+.btn-submit-avaliacao:hover {
+    background: linear-gradient(135deg, #FFA726 0%, #FF6B6B 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(255, 107, 107, 0.4);
+}
+
+.avaliacoes-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.avaliacao-item {
+    background: white;
+    border: 2px solid #e0e0e0;
+    border-radius: 16px;
+    padding: 1.5rem;
+}
+
+.avaliacao-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.avaliacao-user {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.user-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    overflow: hidden;
+    background: #e0e0e0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.user-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.user-avatar i {
+    font-size: 2rem;
+    color: #999;
+}
+
+.avaliacao-stars {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.avaliacao-stars i {
+    color: #FFD700;
+    font-size: 0.9rem;
+}
+
+.avaliacao-data {
+    color: #999;
+    font-size: 0.9rem;
+}
+
+.avaliacao-comentario {
+    color: #666;
+    line-height: 1.7;
+}
+
+.no-avaliacoes {
+    text-align: center;
+    padding: 3rem;
+    color: #999;
+    font-style: italic;
+}
+
+@media (max-width: 768px) {
+    .detalhes-grid {
+        grid-template-columns: 1fr;
+        gap: 2rem;
+    }
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function changeMainImage(imageUrl) {
+    document.getElementById('mainImage').src = imageUrl;
+}
+
+function toggleFavorite(estabelecimentoId) {
+    {% if not user.is_authenticated %}
+        window.location.href = "{% url 'login' %}?next=" + window.location.pathname;
+        return;
+    {% endif %}
+    
+    fetch(`/estabelecimento/${estabelecimentoId}/favoritar/`, {
+        method: 'POST',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': getCookie('csrftoken')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const btn = document.querySelector('.favorite-btn-large');
+            if (data.is_favorito) {
+                btn.classList.add('favorited');
+            } else {
+                btn.classList.remove('favorited');
+            }
+        }
+    })
+    .catch(error => console.error('Erro:', error));
+}
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+</script>
+{% endblock %}
+

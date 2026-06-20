@@ -1,0 +1,484 @@
+{% extends 'base.html' %}
+
+{% block title %}Mapa Interativo - Minha Vitrine{% endblock %}
+
+{% block content %}
+<div class="mapa-page">
+    <div class="mapa-header">
+        <h1>Mapa interativo</h1>
+        
+        <div class="mapa-filtro">
+            <label for="filtroCategoria">Filtro</label>
+            <select id="filtroCategoria" class="filtro-select" onchange="filtrarPorCategoria(this.value)">
+                <option value="">Todas as categorias</option>
+                {% for categoria in categorias %}
+                    <option value="{{ categoria.slug }}" {% if categoria_filtro == categoria.slug %}selected{% endif %}>
+                        {{ categoria.nome }}
+                    </option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+    
+    {% if total_sem_coordenadas > 0 %}
+        <div class="aviso-coordenadas">
+            <i class="fas fa-info-circle"></i>
+            <span>
+                <strong>Atenção:</strong> {{ total_sem_coordenadas }} estabelecimento{{ total_sem_coordenadas|pluralize }} 
+                não aparece{{ total_sem_coordenadas|pluralize:"m" }} no mapa por não ter{{ total_sem_coordenadas|pluralize:"em" }} coordenadas GPS cadastradas.
+                {% if user.is_authenticated and user.profile.is_dev %}
+                    <a href="{% url 'admin:core_estabelecimento_changelist' %}">Cadastre as coordenadas no admin</a>
+                {% endif %}
+            </span>
+        </div>
+    {% endif %}
+    
+    <div class="mapa-container">
+        <div class="estabelecimento-sidebar">
+            {% if estabelecimentos %}
+                {% for est in estabelecimentos %}
+                    <div class="sidebar-card" data-id="{{ est.id }}" onclick="focusOnMarker({{ est.id }})">
+                        {% if est.imagem_principal %}
+                            <img src="{{ est.imagem_principal.url }}" alt="{{ est.nome }}" class="sidebar-image">
+                        {% else %}
+                            <div class="sidebar-image-placeholder">
+                                <i class="fas fa-store"></i>
+                            </div>
+                        {% endif %}
+                        
+                        <div class="sidebar-content">
+                            <h3>{{ est.nome }}</h3>
+                            <div class="sidebar-info">
+                                <div class="info-row">
+                                    <i class="fas fa-map-marker-alt"></i>
+                                    <span>{{ est.endereco }}</span>
+                                </div>
+                                <div class="info-row">
+                                    <i class="far fa-clock"></i>
+                                    <span>{{ est.horario_funcionamento|default:"Consultar horário" }}</span>
+                                </div>
+                                {% if est.instagram %}
+                                    <div class="info-row">
+                                        <i class="fab fa-instagram"></i>
+                                        <span>{{ est.instagram }}</span>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <div class="sidebar-descricao">
+                                <h4>Descrição:</h4>
+                                <p>{{ est.descricao }}</p>
+                            </div>
+                            
+                            {% if est.media_avaliacoes %}
+                                <div class="sidebar-avaliacoes">
+                                    <h4>Avaliações ></h4>
+                                    <div class="avaliacoes-preview">
+                                        <div class="avaliacao-item">
+                                            <strong>{{ est.media_avaliacoes|floatformat:1 }}</strong>
+                                            <div class="stars">
+                                                {% for i in "12345" %}
+                                                    {% if forloop.counter <= est.media_avaliacoes %}
+                                                        <i class="fas fa-star"></i>
+                                                    {% else %}
+                                                        <i class="far fa-star"></i>
+                                                    {% endif %}
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="no-results-sidebar">
+                    <i class="fas fa-map-marked-alt"></i>
+                    <p>Nenhum estabelecimento encontrado</p>
+                </div>
+            {% endif %}
+        </div>
+        
+        <div class="mapa-view">
+            <div id="map">
+                {% if estabelecimentos %}
+                    <iframe 
+                        id="googleMapsFrame"
+                        width="100%" 
+                        height="100%" 
+                        frameborder="0" 
+                        style="border:0"
+                        referrerpolicy="no-referrer-when-downgrade"
+                        src="https://www.google.com/maps?output=embed&q={{ estabelecimentos.0.latitude }},{{ estabelecimentos.0.longitude }}&z=15"
+                        allowfullscreen>
+                    </iframe>
+                {% else %}
+                    <div class="empty-map">
+                        <i class="fas fa-map-marked-alt"></i>
+                        <p>Nenhum estabelecimento para exibir no mapa</p>
+                        <small>Cadastre estabelecimentos com coordenadas GPS</small>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.mapa-page {
+    min-height: calc(100vh - 80px);
+}
+
+.mapa-header {
+    background: #f8f9fa;
+    padding: 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 2px solid #e0e0e0;
+}
+
+.mapa-header h1 {
+    font-size: 2rem;
+    color: #1a1a1a;
+}
+
+.mapa-filtro {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.mapa-filtro label {
+    font-weight: 600;
+    color: #1a1a1a;
+}
+
+.aviso-coordenadas {
+    background: #fff3cd;
+    border: 2px solid #ffc107;
+    border-radius: 8px;
+    padding: 1rem 1.5rem;
+    margin: 1rem 2rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    color: #856404;
+}
+
+.aviso-coordenadas i {
+    font-size: 1.5rem;
+    color: #ffc107;
+}
+
+.aviso-coordenadas a {
+    color: #856404;
+    text-decoration: underline;
+    font-weight: 600;
+}
+
+.aviso-coordenadas a:hover {
+    color: #533f03;
+}
+
+.filtro-select {
+    padding: 0.75rem 1.5rem;
+    border: 2px solid #e0e0e0;
+    border-radius: 8px;
+    font-size: 1rem;
+    background: white;
+    cursor: pointer;
+    min-width: 200px;
+}
+
+.mapa-container {
+    display: grid;
+    grid-template-columns: 400px 1fr;
+    height: calc(100vh - 80px - 100px);
+}
+
+.estabelecimento-sidebar {
+    background: white;
+    border-right: 2px solid #e0e0e0;
+    overflow-y: auto;
+    padding: 1rem;
+}
+
+.sidebar-card {
+    background: white;
+    border: 2px solid #e0e0e0;
+    border-radius: 16px;
+    margin-bottom: 1rem;
+    overflow: hidden;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.sidebar-card:hover {
+    border-color: #6C5CE7;
+    box-shadow: 0 4px 12px rgba(108, 92, 231, 0.2);
+}
+
+.sidebar-card.active {
+    border-color: #6C5CE7;
+    background: #f0fffe;
+    box-shadow: 0 4px 12px rgba(108, 92, 231, 0.3);
+}
+
+.sidebar-image {
+    width: 100%;
+    height: 150px;
+    object-fit: cover;
+}
+
+.sidebar-image-placeholder {
+    width: 100%;
+    height: 150px;
+    background: linear-gradient(135deg, #6C5CE7 0%, #00B894 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    color: white;
+}
+
+.sidebar-content {
+    padding: 1rem;
+}
+
+.sidebar-content h3 {
+    font-size: 1.25rem;
+    margin-bottom: 0.75rem;
+    color: #1a1a1a;
+}
+
+.sidebar-info {
+    margin-bottom: 1rem;
+}
+
+.info-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    color: #666;
+}
+
+.info-row i {
+    color: #6C5CE7;
+    width: 16px;
+    margin-top: 2px;
+}
+
+.sidebar-descricao {
+    margin-bottom: 1rem;
+}
+
+.sidebar-descricao h4 {
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+    color: #1a1a1a;
+}
+
+.sidebar-descricao p {
+    font-size: 0.9rem;
+    color: #666;
+    line-height: 1.6;
+}
+
+.sidebar-avaliacoes h4 {
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+    color: #1a1a1a;
+}
+
+.avaliacao-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.avaliacao-item strong {
+    font-size: 1.1rem;
+    color: #1a1a1a;
+}
+
+.stars {
+    display: flex;
+    gap: 0.25rem;
+}
+
+.stars i {
+    color: #FFD700;
+    font-size: 0.9rem;
+}
+
+.mapa-view {
+    position: relative;
+}
+
+#map {
+    width: 100%;
+    height: 100%;
+    background: #e0e0e0;
+    position: relative;
+}
+
+#googleMapsFrame {
+    width: 100%;
+    height: 100%;
+    border: none;
+}
+
+.empty-map {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    color: #999;
+    text-align: center;
+    padding: 2rem;
+}
+
+.empty-map i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+.empty-map small {
+    font-size: 1rem;
+    margin-top: 0.5rem;
+}
+
+.no-results-sidebar {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: #999;
+}
+
+.no-results-sidebar i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+@media (max-width: 1024px) {
+    .mapa-container {
+        grid-template-columns: 1fr;
+    }
+    
+    .mapa-view {
+        display: none;
+    }
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const estabelecimentos = {{ estabelecimentos_json|safe }};
+
+function filtrarPorCategoria(categoria) {
+    if (categoria) {
+        window.location.href = `?categoria=${categoria}`;
+    } else {
+        window.location.href = '{% url "mapa_interativo" %}';
+    }
+}
+
+function focusOnMarker(id) {
+    // Encontrar o estabelecimento pelo ID
+    const estabelecimento = estabelecimentos.find(est => est.id === id);
+    
+    if (!estabelecimento) {
+        console.log('Estabelecimento não encontrado:', id);
+        return;
+    }
+    
+    // Remover classe 'active' de todos os cards
+    document.querySelectorAll('.sidebar-card').forEach(card => {
+        card.classList.remove('active');
+    });
+    
+    // Adicionar classe 'active' no card clicado
+    const clickedCard = document.querySelector(`.sidebar-card[data-id="${id}"]`);
+    if (clickedCard) {
+        clickedCard.classList.add('active');
+    }
+    
+    // Atualizar o iframe do Google Maps com a localização do estabelecimento
+    const iframe = document.getElementById('googleMapsFrame');
+    if (iframe && estabelecimento.latitude && estabelecimento.longitude) {
+        const lat = estabelecimento.latitude;
+        const lng = estabelecimento.longitude;
+        const nome = encodeURIComponent(estabelecimento.nome);
+        
+        // URL para mostrar o local no Google Maps com um marcador
+        iframe.src = `https://www.google.com/maps?output=embed&q=${lat},${lng}&z=17&t=m`;
+        
+        console.log(`Focando em: ${estabelecimento.nome} (${lat}, ${lng})`);
+    }
+}
+
+// Adicionar botão de abrir no Google Maps em cada card
+document.addEventListener('DOMContentLoaded', function() {
+    // Ativar o primeiro card por padrão
+    const firstCard = document.querySelector('.sidebar-card');
+    if (firstCard) {
+        firstCard.classList.add('active');
+    }
+    
+    // Adicionar botão de link direto ao Google Maps em cada card
+    document.querySelectorAll('.sidebar-card').forEach(card => {
+        const estId = parseInt(card.getAttribute('data-id'));
+        const estabelecimento = estabelecimentos.find(est => est.id === estId);
+        
+        if (estabelecimento && estabelecimento.latitude && estabelecimento.longitude) {
+            const linkDiv = document.createElement('div');
+            linkDiv.style.padding = '0 1rem 1rem 1rem';
+            linkDiv.innerHTML = `
+                <a href="https://www.google.com/maps?q=${estabelecimento.latitude},${estabelecimento.longitude}" 
+                   target="_blank" 
+                   class="btn-open-maps"
+                   onclick="event.stopPropagation();">
+                    <i class="fas fa-external-link-alt"></i>
+                    Abrir no Google Maps
+                </a>
+            `;
+            card.appendChild(linkDiv);
+        }
+    });
+});
+</script>
+
+<style>
+.btn-open-maps {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.625rem 1rem;
+    background: #4285F4;
+    color: white !important;
+    border-radius: 6px;
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    width: 100%;
+    justify-content: center;
+}
+
+.btn-open-maps:hover {
+    background: #3367D6;
+    transform: translateY(-2px);
+    box-shadow: 0 3px 8px rgba(66, 133, 244, 0.3);
+}
+</style>
+{% endblock %}
+
